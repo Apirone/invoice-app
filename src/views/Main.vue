@@ -15,7 +15,8 @@
             </h1>
             <p class="merchant" v-if="data['user-data'].merchant">
               By
-              <a v-if="data['user-data'].url" :href="data['user-data'].url" target="_blank" rel="noopener noreferrer" class="link hovered">{{ data['user-data'].merchant }}</a>
+              <a v-if="data['user-data'].url" :href="data['user-data'].url" target="_blank" rel="noopener noreferrer"
+                class="link hovered">{{ data['user-data'].merchant }}</a>
               <span v-else>{{ data['user-data'].merchant }}</span>
             </p>
           </div>
@@ -24,37 +25,44 @@
           </h1>
           <p class="skeleton__box info__date"><span>{{ data.created }}</span></p>
           <p class="skeleton__box info__amount"><span>{{ data.amount }}</span></p>
-          <p class="info__price" v-if="data['user-data'] && typeof data['user-data'] === 'object' && data['user-data'].price">{{ `${data['user-data'].price.amount} ${data['user-data'].price.currency}` }}</p>
+          <p class="info__price"
+            v-if="data['user-data'] && typeof data['user-data'] === 'object' && data['user-data'].price">{{
+            `${data['user-data'].price.amount} ${data['user-data'].price.currency}` }}</p>
         </div>
       </div>
       <div class="address">
         <div class="address__title">Payment address</div>
         <p class="skeleton__box">{{ data.address }}</p>
-        <w-copy :text="data.address" v-if="!loading"/>
+        <w-copy :text="data.address" v-if="!loading" />
       </div>
-      <div class="status-data" :class="['status-data', {historyFlag}]">
-        <div :class="['status', {skeleton__box: status.title !== 'Warning'}, `${status.title.toLowerCase()}`]">
-          <div class="status__icon">
-            <span v-if="status.title !== 'Loading'">
-              <component :is="`${status.title}Icon`"/>
-            </span>
+      <div class="status-data__wrapper">
+        <div :class="['status-data', {historyFlag}]">
+          <div :class="['status', {skeleton__box: status.title !== 'Warning'}, `${status.title.toLowerCase()}`]">
+            <div class="status__icon">
+              <span v-if="status.title !== 'Loading'">
+                <component :is="`${status.title}Icon`" />
+              </span>
+            </div>
+            <div class="status__text">
+              <p>{{ status.description }}</p>
+              <p v-if="expire && status.title !== 'Success'" class="countdown">{{ expire }}</p>
+            </div>
           </div>
-          <div class="status__text">
-            <p>{{ status.description }}</p>
-            <p v-if="expire && status.title !== 'Success'" class="countdown">{{ expire }}</p>
+          <div class="history" v-if="data.history">
+            <ul>
+              <li class="history__item" v-for="item, id in data.history" :key="id">
+                <span>
+                  {{ (new Date(`${item.date}+00:00`)).toLocaleString() }}
+                  <span v-if="item.amount">({{ (item.amount * factor).toFixed(8) }})</span>
+                </span>
+                <span>{{ item.status }}</span>
+              </li>
+            </ul>
           </div>
+          <w-btn @click="historyFlag = !historyFlag" class="toggler">
+            <ArrowIcon />
+          </w-btn>
         </div>
-        <div class="history" v-if="data.history">
-          <ul>
-            <li class="history__item" v-for="item, id in data.history" :key="id">
-              <span>{{ (new Date(`${item.date}+00:00`)).toLocaleString() }}</span>
-              <span>{{ item.status }}</span>
-            </li>
-          </ul>
-        </div>
-        <w-btn @click="historyFlag = !historyFlag" class="toggler">
-          <ArrowIcon/>
-        </w-btn>
       </div>
       <p v-if="linkbackCounter" class="countdown" style="text-align: center;">
         Get back to the site in {{ linkbackCounter }} seconds or click <a :href="linkback" class="link hovered">here</a>
@@ -62,7 +70,7 @@
     </div>
     <div class="invoice__footer">
       <p>
-        Powered by 
+        Powered by
         <a href="https://apirone.com/" title="Apirone" class="link hovered">
           <Logo />
         </a>
@@ -91,7 +99,7 @@ export default {
   data() {
     return {
       loading: true,
-      serviceUrl: 'https://apirone.com',
+      serviceUrl: window?.configs?.SERVICE_URL || 'https://apirone.com',
       id: '',
       currencies: Object,
       status: {
@@ -103,6 +111,7 @@ export default {
       historyFlag: false,
       linkbackCounter: null,
       linkback: null,
+      factor: null,
     };
   },
   mounted() {
@@ -148,9 +157,17 @@ export default {
           response.data.created = (new Date(`${response.data.created}+00:00`)).toLocaleString();
           this.currencies.forEach(currency => {
             if (currency.abbr === response.data.currency) {
+              this.factor = parseFloat(currency['units-factor']);
               const walletPrefix = `${currency.name.toLowerCase().replace(/[()]/g, '').split(' ').join('-')}:`;
-              response.data.qr = `${walletPrefix}${response.data.address}?amount=${(response.data.amount * parseFloat(currency['units-factor'])).toFixed(8)}`;
-              response.data.amount = `${(response.data.amount * parseFloat(currency['units-factor'])).toFixed(8)} ${response.data.currency.toUpperCase()}`;
+              const amount = response.data.amount ? {
+                value: (response.data.amount * parseFloat(currency['units-factor'])).toFixed(8),
+                isNumber: true,
+              } : {
+                value: '',
+                isNumber: false,
+              };
+              response.data.qr = `${walletPrefix}${response.data.address}${amount.isNumber ? '?amount=' + amount.value : ''}`;
+              response.data.amount = `${amount.value} ${amount.isNumber ? response.data.currency.toUpperCase() : ''}`;
             }
           });
           if (response.data.expire) {
@@ -253,6 +270,10 @@ export default {
   margin-bottom: 0;
 }
 
+.info__amount small {
+  opacity: .7;
+}
+
 .info__price {
   margin-top: .5rem;
 }
@@ -314,9 +335,17 @@ export default {
   color: #a5a5a5;
 }
 
+.status-data__wrapper {
+  position: relative;
+  min-height: 8rem;
+  width: 100%;
+  z-index: 9;
+}
+
 .status-data {
   margin: 1rem 0;
-  position: relative;
+  position: absolute;
+  width: 100%;
 }
 
 .history {
@@ -335,14 +364,17 @@ export default {
   border-radius: 0 0 1rem 1rem;
 }
 
-.history ul {
-  padding: 0 1rem;
+.status-data.historyFlag .history ul {
+  padding: 0 1rem 1rem;
+  margin-bottom: 0;
+  background-color: #ffffff;
 }
 
 .history__item {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background-color: #ffffff;
 }
 
 .status {
