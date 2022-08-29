@@ -1,4 +1,4 @@
-import Vue from 'vue';
+import { createApp } from 'vue';
 import App from './App.vue';
 import axios from 'axios';
 import Button from '@/components/buttons/Button.vue';
@@ -6,15 +6,13 @@ import Copy from '@/components/buttons/Copy.vue';
 import Loader from '@/components/Loader.vue';
 import VueQRCodeComponent from 'vue-qr-generator';
 
-Vue.component('w-btn', Button);
-Vue.component('w-copy', Copy);
-Vue.component('qr-code', VueQRCodeComponent);
-Vue.component('w-loader', Loader);
+const app = createApp(App);
 
-Vue.prototype.Axios = axios;
+app.config.globalProperties.Axios = axios;
 
-Vue.config.productionTip = false
+app.component('w-btn', Button);
+app.component('w-copy', Copy);
+app.component('qr-code', VueQRCodeComponent);
+app.component('w-loader', Loader);
 
-new Vue({
-  render: h => h(App),
-}).$mount('#app')
+app.mount('#app')
