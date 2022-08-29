@@ -24,7 +24,10 @@
             Invoice <small v-if="data.invoice">({{ data.invoice }})</small>
           </h1>
           <p class="skeleton__box info__date"><span>{{ data.created }}</span></p>
-          <p class="skeleton__box info__amount"><span>{{ data.amount }}</span></p>
+          <p class="skeleton__box info__amount">
+            <small v-if="remainsToPay">Remains to pay <br></small>
+            <span>{{ data.amount }}</span>
+          </p>
           <p class="info__price"
             v-if="data['user-data'] && typeof data['user-data'] === 'object' && data['user-data'].price">{{
             `${data['user-data'].price.amount} ${data['user-data'].price.currency}` }}</p>
@@ -112,6 +115,7 @@ export default {
       linkbackCounter: null,
       linkback: null,
       factor: null,
+      remainsToPay: false,
     };
   },
   mounted() {
@@ -154,20 +158,30 @@ export default {
       if (this.status.title !== 'Expired') {
         await this.Axios.get(`${this.serviceUrl}/api/v2/invoices/${this.id}`)
         .then((response) => {
+          this.remainsToPay = false;
           response.data.created = (new Date(`${response.data.created}+00:00`)).toLocaleString();
           this.currencies.forEach(currency => {
             if (currency.abbr === response.data.currency) {
+              let { amount } = response.data;
+              if (amount && response.data.status === 'partpaid') {
+                response.data?.history.forEach((historyItem) => {
+                  if (historyItem.status === 'partpaid') {
+                    amount = amount - historyItem.amount;
+                    this.remainsToPay = true;
+                  }
+                });
+              }
               this.factor = parseFloat(currency['units-factor']);
               const walletPrefix = `${currency.name.toLowerCase().replace(/[()]/g, '').split(' ').join('-')}:`;
-              const amount = response.data.amount ? {
-                value: (response.data.amount * parseFloat(currency['units-factor'])).toFixed(8),
+              const amountData = amount ? {
+                value: (amount * parseFloat(currency['units-factor'])).toFixed(8),
                 isNumber: true,
               } : {
                 value: '',
                 isNumber: false,
               };
-              response.data.qr = `${walletPrefix}${response.data.address}${amount.isNumber ? '?amount=' + amount.value : ''}`;
-              response.data.amount = `${amount.value} ${amount.isNumber ? response.data.currency.toUpperCase() : ''}`;
+              response.data.qr = `${walletPrefix}${response.data.address}${amountData.isNumber ? '?amount=' + amountData.value : ''}`;
+              response.data.amount = `${amountData.value} ${amountData.isNumber ? response.data.currency.toUpperCase() : ''}`;
             }
           });
           if (response.data.expire) {
