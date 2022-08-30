@@ -11,21 +11,21 @@
           <div v-if="data['user-data'] && typeof data['user-data'] === 'object'">
             <h1 v-if="data['user-data'].data">{{ data['user-data'].data }}</h1>
             <h1 v-else>
-              Invoice <small v-if="data.invoice">({{ data.invoice }})</small>
+              {{ $t("title") }} <small v-if="data.invoice">({{ data.invoice }})</small>
             </h1>
             <p class="merchant" v-if="data['user-data'].merchant">
-              By
+              {{ $t("from") }}
               <a v-if="data['user-data'].url" :href="data['user-data'].url" target="_blank" rel="noopener noreferrer"
                 class="link hovered">{{ data['user-data'].merchant }}</a>
               <span v-else>{{ data['user-data'].merchant }}</span>
             </p>
           </div>
           <h1 v-else>
-            Invoice <small v-if="data.invoice">({{ data.invoice }})</small>
+            {{ $t("title") }} <small v-if="data.invoice">({{ data.invoice }})</small>
           </h1>
           <p class="skeleton__box info__date"><span>{{ data.created }}</span></p>
           <p class="skeleton__box info__amount">
-            <small v-if="remainsToPay">Remains to pay <br></small>
+            <small v-if="remainsToPay">{{ $t("remainsToPay") }} <br></small>
             <span>{{ data.amount }}</span>
           </p>
           <p class="info__price"
@@ -34,7 +34,7 @@
         </div>
       </div>
       <div class="address">
-        <div class="address__title">Payment address</div>
+        <div class="address__title">{{ $t("paymentAddress") }}</div>
         <p class="skeleton__box">{{ data.address }}</p>
         <w-copy :text="data.address" v-if="!loading" />
       </div>
@@ -58,7 +58,9 @@
                   {{ (new Date(`${item.date}+00:00`)).toLocaleString() }}
                   <span v-if="item.amount">({{ (item.amount * factor).toFixed(8) }})</span>
                 </span>
-                <span>{{ item.status }}</span>
+                <span style="text-align: right;">
+                  {{ $te(`statuses.${item.status}`) ? $t(`statuses.${item.status}`) : item.status }}
+                </span>
               </li>
             </ul>
           </div>
@@ -68,7 +70,7 @@
         </div>
       </div>
       <p v-if="linkbackCounter" class="countdown" style="text-align: center;">
-        Get back to the site in {{ linkbackCounter }} seconds or click <a :href="linkback" class="link hovered">here</a>
+        {{ $t("getBack.part1") }} {{ linkbackCounter }} {{ $t("getBack.part2") }} <a :href="linkback" class="link hovered">{{ $t("getBack.part3") }}</a>
       </p>
     </div>
     <div class="invoice__footer">
@@ -128,10 +130,10 @@ export default {
         this.repeat();
       })
       .catch(() => {
-        this.newStatus('Warning', 'Something went wrong');
+        this.newStatus('Warning', this.$t("somethingWentWrong"));
       });
     } else {
-      this.newStatus('Warning', 'Invalid invoice id');
+      this.newStatus('Warning', this.$t("invalidInvoiceId"));
     }
   },
   methods: {
@@ -189,11 +191,11 @@ export default {
           }
           const {status} = response.data;
           if (status === 'created' || status === 'partpaid') {
-            this.newStatus('Refresh', 'Waiting for payment');
+            this.newStatus('Refresh', this.$t("waitingForPayment"));
           } else if (status === 'expired') {
-            this.newStatus('Expired', 'Expired');
+            this.newStatus('Expired', this.$t("expired"));
           } else {
-            this.newStatus('Success', 'Payment accepted');
+            this.newStatus('Success', this.$t("paymentAccepted"));
             if (response.data.linkback && !this.loading) {
               this.linkback = response.data.linkback;
               this.linkbackCounter = 15;
@@ -210,7 +212,7 @@ export default {
           this.loading = false;
         })
         .catch(() => {
-          this.newStatus('Warning', 'Not Found');
+          this.newStatus('Warning', this.$t("notFound"));
         });
         if (this.data.status === 'created' || this.data.status === 'partpaid') {
           return true;
@@ -235,7 +237,7 @@ export default {
           clearInterval(interval);
           this.expire = null;
           if (this.status.title !== 'Success') {
-            this.newStatus('Expired', 'Expired');
+            this.newStatus('Expired', this.$t("expired"));
           }
         }
       }, 1000);
