@@ -104,7 +104,7 @@ export default {
   data() {
     return {
       loading: true,
-      serviceUrl: window?.configs?.SERVICE_URL || 'https://apirone.com',
+      serviceUrl: 'https://apirone.com',
       id: '',
       currencies: Object,
       status: {
@@ -161,7 +161,7 @@ export default {
         await this.Axios.get(`${this.serviceUrl}/api/v2/invoices/${this.id}`)
         .then((response) => {
           this.remainsToPay = false;
-          response.data.created = (new Date(`${response.data.created}+00:00`)).toLocaleString();
+          response.data.created = (new Date(`${response.data.created}+00:00`)).toLocaleString(navigator.language || navigator.userLanguage);
           this.currencies.forEach(currency => {
             if (currency.abbr === response.data.currency) {
               let { amount } = response.data;
