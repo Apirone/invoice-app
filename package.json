@@ -1,6 +1,6 @@
 {
   "name": "invoice",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "scripts": {
     "serve": "export SET NODE_OPTIONS=--openssl-legacy-provider; vue-cli-service serve",
