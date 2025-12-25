@@ -1,7 +1,7 @@
-FROM node:17 as builder
+FROM node:21 AS build
 COPY . /app
 WORKDIR /app
-RUN npm ci && npm run build
+RUN yarn && yarn build-embed
 
 FROM nginx:latest
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html

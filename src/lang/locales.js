@@ -23,9 +23,17 @@ export default {
       completed: 'completed',
       expired: 'expired',
     },
+    table: {
+      item: 'Item',
+      qty: 'Qty',
+      cost: 'Cost',
+      total: 'Total',
+      subtotal: 'Subtotal',
+    },
+    invoiceNotFound: 'Invoice Not Found',
   },
   ru: {
-    title: 'Инвойс',
+    title: 'Счёт',
     from: 'От',
     remainsToPay: 'Осталось оплатить',
     paymentAddress: 'Платежный адрес',
@@ -39,7 +47,7 @@ export default {
     notFound: 'Ничего не найдено',
     waitingForPayment: 'Ожидание оплаты',
     paymentAccepted: 'Платеж принят',
-    expired: 'Инвойс просрочен',
+    expired: 'Просрочен',
     statuses: {
       created: 'создан',
       partpaid: 'частично оплачен',
@@ -48,6 +56,14 @@ export default {
       completed: 'завершён',
       expired: 'просрочен',
     },
+    table: {
+      item: 'Наименование',
+      qty: 'Кол-во',
+      cost: 'Цена',
+      total: 'Итого',
+      subtotal: 'Подытог',
+    },
+    invoiceNotFound: 'Счёт не найден',
   },
   es: {
     title: 'Factura',
@@ -73,6 +89,14 @@ export default {
       completed: 'completa',
       expired: 'caducada',
     },
+    table: {
+      item: 'Artículo',
+      qty: 'Cantidad',
+      cost: 'Coste',
+      total: 'Total',
+      subtotal: 'Subtotal',
+    },
+    invoiceNotFound: 'Cuenta no encontrada',
   },
   fr: {
     title: 'Facture',
@@ -98,6 +122,14 @@ export default {
       completed: 'complétée',
       expired: 'expirée',
     },
+    table: {
+      item: 'Article',
+      qty: 'Quantité',
+      cost: 'Coût',
+      total: 'Total',
+      subtotal: 'Subtotal',
+    },
+    invoiceNotFound: 'Compte non trouvé',
   },
   de: {
     title: 'Rechnung',
@@ -123,6 +155,14 @@ export default {
       completed: 'fertig',
       expired: 'abgelaufen',
     },
+    table: {
+      item: 'Artikel',
+      qty: 'Menge',
+      cost: 'Preis',
+      total: 'Gesamt',
+      subtotal: 'Zwischensumme',
+    },
+    invoiceNotFound: 'Konto nicht gefunden',
   },
   tr: {
     title: 'Fatura',
@@ -148,5 +188,13 @@ export default {
       completed: 'tamamlandı',
       expired: 'süresi doldu',
     },
+    table: {
+      item: 'Isim',
+      qty: 'Miktar',
+      cost: 'Fiyat',
+      total: 'Toplam',
+      subtotal: 'Ara Toplam',
+    },
+    invoiceNotFound: 'Hesap bulunamadı',
   },
 }

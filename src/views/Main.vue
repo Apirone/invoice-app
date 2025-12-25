@@ -1,638 +1,418 @@
 <template>
-  <div :class="['invoice', {loading}, {'invoice-expired': status.title === 'Expired'}]">
-    <div class="invoice__body">
+  <div
+    :class="[
+      'invoice',
+      { loading },
+      { 'invoice-expired': status.title === 'Expired' },
+      { 'invoice__qr-only': qrOnly },
+    ]"
+  >
+    <div v-if="!isNotFound" class="invoice__body">
       <div class="invoice__info">
-        <div class="qr__wrapper">
-          <div class="skeleton__box">
-            <qr-code :text="data.qr" v-if="!loading" />
-          </div>
+        <QrCodeComponent
+          :data="data"
+          :loading="loading"
+          :qr-only="qrOnly"
+        />
+        <MainInfo
+          v-if="!qrOnly"
+          :loading="loading"
+          :data="data"
+          :remains-to-pay="remainsToPay"
+          :user-data="userData"
+        />
+      </div>
+      <div v-if="!qrOnly">
+        <Address
+          :data="data"
+          :loading="loading"
+        />
+        <div v-if="userData">
+          <ItemsTable :data="userData"/>
         </div>
-        <div class="info">
-          <div v-if="data['user-data'] && typeof data['user-data'] === 'object'">
-            <h1 v-if="data['user-data'].data">{{ data['user-data'].data }}</h1>
-            <h1 v-else>
-              {{ $t("title") }} <small v-if="data.invoice">({{ data.invoice }})</small>
-            </h1>
-            <p class="merchant" v-if="data['user-data'].merchant">
-              {{ $t("from") }}
-              <a v-if="data['user-data'].url" :href="data['user-data'].url" target="_blank" rel="noopener noreferrer"
-                class="link hovered">{{ data['user-data'].merchant }}</a>
-              <span v-else>{{ data['user-data'].merchant }}</span>
-            </p>
-          </div>
-          <h1 v-else>
-            {{ $t("title") }} <small v-if="data.invoice">({{ data.invoice }})</small>
-          </h1>
-          <p class="skeleton__box info__date"><span>{{ data.created }}</span></p>
-          <p class="skeleton__box info__amount">
-            <small v-if="remainsToPay">{{ $t("remainsToPay") }} <br></small>
-            <span>{{ data.amount }}</span>
+        <p
+          v-if="linkbackCounter && !embed"
+          class="countdown"
+          style="text-align: center;"
+        >
+          {{ t("getBack.part1") }} {{ linkbackCounter }} {{ t("getBack.part2") }}
+          <a
+            :href="linkback"
+            class="link hovered"
+          >
+            {{ t("getBack.part3") }}
+          </a>
+        </p>
+        <StatusData
+          :status="status"
+          :data="data"
+          :expire="expire"
+          :factor="factor"
+          :check-repeat="checkRepeat"
+        />
+        <div v-if="!loading">
+          <p
+            v-if="data.status === 'overpaid'"
+            class="invoice__note"
+          >
+            You paid more than it is required.
+            Please contact the seller to refund the difference
+            since the seller is the only owner of this wallet and has all the funds.
           </p>
-          <p class="info__price"
-            v-if="data['user-data'] && typeof data['user-data'] === 'object' && data['user-data'].price">{{
-            `${data['user-data'].price.amount} ${data['user-data'].price.currency}` }}</p>
         </div>
+        <Footer :embed="embed" :logo="logo"/>
       </div>
-      <div class="address">
-        <div class="address__title">{{ $t("paymentAddress") }}</div>
-        <p class="skeleton__box">{{ data.address }}</p>
-        <w-copy :text="data.address" v-if="!loading" />
+      <div v-else
+           :class="['status', 'status__qr-only', { skeleton__box: status.title !== 'Warning' }, `${status.title.toLowerCase()}`]"
+      >
+        <p>
+          <StatusIcons :status="status.title"/>
+          <span v-if="status.description">{{ t(status.description) }}</span>
+        </p>
       </div>
-      <div class="status-data__wrapper">
-        <div :class="['status-data', {historyFlag}]">
-          <div :class="['status', {skeleton__box: status.title !== 'Warning'}, `${status.title.toLowerCase()}`]">
-            <div class="status__icon">
-              <span v-if="status.title !== 'Loading'">
-                <component :is="`${status.title}Icon`" />
-              </span>
-            </div>
-            <div class="status__text">
-              <p>{{ status.description }}</p>
-              <p v-if="expire && status.title !== 'Success'" class="countdown">{{ expire }}</p>
-            </div>
-          </div>
-          <div class="history" v-if="data.history">
-            <ul>
-              <li class="history__item" v-for="item, id in data.history" :key="id">
-                <span>
-                  {{ (new Date(`${item.date}+00:00`)).toLocaleString() }}
-                  <span v-if="item.amount">({{ (item.amount * factor).toFixed(8) }})</span>
-                </span>
-                <span style="text-align: right;">
-                  {{ $te(`statuses.${item.status}`) ? $t(`statuses.${item.status}`) : item.status }}
-                </span>
-              </li>
-            </ul>
-          </div>
-          <w-btn @click="historyFlag = !historyFlag" class="toggler">
-            <ArrowIcon />
-          </w-btn>
-        </div>
-      </div>
-      <p v-if="linkbackCounter" class="countdown" style="text-align: center;">
-        {{ $t("getBack.part1") }} {{ linkbackCounter }} {{ $t("getBack.part2") }} <a :href="linkback" class="link hovered">{{ $t("getBack.part3") }}</a>
-      </p>
     </div>
-    <div class="invoice__footer">
-      <p>
-        Powered by
-        <a href="https://apirone.com/" title="Apirone" class="link hovered">
-          <Logo />
-        </a>
-      </p>
+    <div v-else class="invoice__body invoice__not-found">
+      <div class="invoice__not-found-content">
+        <SvgIcon name="cancel_small"/>
+        <p v-if="status.description">{{ t(status.description) }}</p>
+      </div>
+      <Footer :embed="embed" :logo="logo"/>
     </div>
   </div>
 </template>
 
-<script>
-import Logo from '@/components/icons/Logo.vue';
-import SuccessIcon from '@/components/icons/SuccessIcon.vue';
-import RefreshIcon from '@/components/icons/RefreshIcon.vue';
-import WarningIcon from '@/components/icons/WarningIcon.vue';
-import ExpiredIcon from '@/components/icons/ExpiredIcon.vue';
-import ArrowIcon from '@/components/icons/ArrowIcon.vue';
+<script setup>
+import { ref, onMounted } from 'vue'
 
-export default {
-  components: {
-    Logo,
-    SuccessIcon,
-    RefreshIcon,
-    WarningIcon,
-    ExpiredIcon,
-    ArrowIcon,
-  },
-  data() {
-    return {
-      loading: true,
-      serviceUrl: 'https://apirone.com',
-      id: '',
-      currencies: Object,
-      status: {
-        title: 'Loading',
-        description: '',
-      },
-      data: Object,
-      expire: null,
-      historyFlag: false,
-      linkbackCounter: null,
-      linkback: null,
-      factor: null,
-      remainsToPay: false,
-    };
-  },
-  mounted() {
-    const urlParams = new URLSearchParams(window.location.search);
-    this.id = urlParams.get('id');
-    if (this.id) {
-      this.Axios.options(`${this.serviceUrl}/api/v2/wallets`)
-      .then((response) => {
-        this.currencies = response.data.currencies;
-        this.repeat();
-      })
-      .catch(() => {
-        this.newStatus('Warning', this.$t("somethingWentWrong"));
-      });
-    } else {
-      this.newStatus('Warning', this.$t("invalidInvoiceId"));
-    }
-  },
-  methods: {
-    newStatus(title, description) {
-      this.status = {
-        title,
-        description,
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
+
+import { getEnv } from '@/utils/env'
+import trimDecimalZeros from '@/utils/trimDecimalZeros'
+import bigInt from "@/utils/BigIntUtils"
+
+import useApi from '@/composables/useApi'
+const { getCurrencies, getInvoiceById } = useApi()
+
+import useCountdown from '@/composables/useCountdown'
+const { expire, countdown } = useCountdown()
+
+import useStatus from '@/composables/useStatus'
+const { status, setStatus } = useStatus()
+
+import ItemsTable from '@/components/parts/ItemsTable.vue'
+import QrCodeComponent from '@/components/parts/QrCodeComponent.vue'
+import MainInfo from '@/components/parts/MainInfo.vue'
+import StatusData from '@/components/parts/StatusData.vue'
+import Address from '@/components/parts/Address.vue'
+import StatusIcons from '@/components/parts/StatusIcons.vue'
+import Footer from '@/components/parts/Footer.vue'
+import SvgIcon from '@/components/icons/SvgIcon.vue'
+
+const isNotFound = ref(false)
+const loading = ref(true)
+const id = ref('')
+const currencies = ref([])
+const data = ref({})
+const userData = ref({})
+const embed = ref(false)
+const logo = ref(false)
+const qrOnly = ref(false)
+const linkbackCounter = ref(null)
+const linkback = ref(null)
+const factor = ref(null)
+const remainsToPay = ref(false)
+const checkRepeat = ref(false)
+
+let expirationConfirmed
+
+onMounted(() => {
+  const isDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+  if (isDarkTheme) {
+    document.body.classList.add('dark-theme')
+    document.body.classList.remove('light-theme')
+  } else {
+    document.body.classList.add('light-theme')
+    document.body.classList.remove('dark-theme')
+  }
+  const urlParams = new URLSearchParams(window.location.search)
+
+  const embedToPage = getEnv('EMBED');
+  embed.value = embedToPage === true || urlParams.get('embed') === 'true'
+
+  const displayLogo = getEnv('LOGO');
+  logo.value = ['boolean','string'].includes(typeof displayLogo) ? displayLogo : !embed.value
+
+  const displayQrOnly = getEnv('QR_ONLY')
+  qrOnly.value = displayQrOnly === true || urlParams.get('qr-only') === 'true'
+
+  id.value = urlParams.get(getEnv('INVOICE_ID_KEY') || 'id')
+  if (!id.value) {
+    const pathSegments = window.location.pathname.split('/')
+    const pathSegmentsCount = pathSegments.length
+    if (pathSegmentsCount) {
+      id.value = decodeURIComponent(pathSegments[pathSegmentsCount - 1])
+      if (!id.value && pathSegmentsCount > 1) {
+        id.value = decodeURIComponent(pathSegments[pathSegmentsCount - 2])
       }
-    },
-    repeat() {
-      this.getData().then((response) => {
-        if (response) {
-          const update = setInterval(() => {
-            this.getData().then((repeatFlag) => {
-              if (!repeatFlag) {
-                clearInterval(update);
-              }
-            });
-          }, 5000);
-        }
-      });
-    },
-    async getData() {
-      if (this.status.title !== 'Expired') {
-        await this.Axios.get(`${this.serviceUrl}/api/v2/invoices/${this.id}`)
-        .then((response) => {
-          this.remainsToPay = false;
-          response.data.created = (new Date(`${response.data.created}+00:00`)).toLocaleString(navigator.language || navigator.userLanguage);
-          this.currencies.forEach(currency => {
-            if (currency.abbr === response.data.currency) {
-              let { amount } = response.data;
-              if (amount && response.data.status === 'partpaid') {
-                response.data?.history.forEach((historyItem) => {
-                  if (historyItem.status === 'partpaid') {
-                    amount = amount - historyItem.amount;
-                    this.remainsToPay = true;
-                  }
-                });
-              }
-              this.factor = parseFloat(currency['units-factor']);
-              const walletPrefix = `${currency.name.toLowerCase().replace(/[()]/g, '').split(' ').join('-')}:`;
-              const amountData = amount ? {
-                value: (amount * parseFloat(currency['units-factor'])).toFixed(8),
+    }
+  }
+  if (!id.value) {
+    isNotFound.value = true
+    loading.value = false
+    setStatus('Warning', 'invoiceNotFound')
+    return
+  }
+  getCurrencies()
+    .then(result => {
+      currencies.value = result
+      repeat()
+    })
+    .catch(() => {
+      setStatus('Warning', 'somethingWentWrong')
+    })
+})
+
+async function repeat() {
+  if (!(await getData())) {
+    return
+  }
+  const updateInterval = setInterval(async () => {
+    checkRepeat.value = await getData()
+    if (!checkRepeat.value && (status.value.title !== 'Expired' || expirationConfirmed)) {
+      clearInterval(updateInterval)
+    }
+  }, 5000)
+}
+
+/**
+ * @returns {Promise<boolean>} repeat get update next time
+ */
+async function getData() {
+  if (status.value.title !== 'Expired' || !expirationConfirmed) {
+    await getInvoiceById(id.value)
+      .then(responseData => {
+        remainsToPay.value = false
+        responseData.created = (new Date(`${responseData.created}+00:00`)).toLocaleString(navigator.language || navigator.userLanguage)
+
+        const responseStatus = responseData.status
+
+        currencies.value.forEach(currency => {
+          if (currency.abbr === responseData.currency) {
+            let { amount } = responseData
+            if (amount && responseStatus === 'partpaid') {
+              responseData?.history.forEach(historyItem => {
+                if (historyItem.status === 'partpaid') {
+                  amount = amount - historyItem.amount
+                  remainsToPay.value = true
+                }
+              })
+            }
+            factor.value = parseFloat(currency['units-factor'])
+            const walletPrefix = `${currency.name.toLowerCase().replace(/[()]/g, '').split(' ').join('-')}:`
+            const amountData = amount
+              ? {
+                value: trimDecimalZeros(bigInt.multiply(amount, parseFloat(currency['units-factor']))),
                 isNumber: true,
-              } : {
+              }
+              : {
                 value: '',
                 isNumber: false,
-              };
-              response.data.qr = `${walletPrefix}${response.data.address}${amountData.isNumber ? '?amount=' + amountData.value : ''}`;
-              response.data.amount = `${amountData.value} ${amountData.isNumber ? response.data.currency.toUpperCase() : ''}`;
-            }
-          });
-          if (response.data.expire) {
-            this.countdown(response.data.expire);
+              }
+            Object.assign(responseData, {
+              qr: `${walletPrefix}${responseData.address}${amountData.isNumber ? '?amount=' + amountData.value : ''}`,
+              amount: `${amountData.value} ${amountData.isNumber ? responseData.currency.includes('@') ? responseData.currency.split('@')[0].toUpperCase() : responseData.currency.toUpperCase() : ''}`,
+              amountData,
+              currencyName: currency.name,
+            })
           }
-          const {status} = response.data;
-          if (status === 'created' || status === 'partpaid') {
-            this.newStatus('Refresh', this.$t("waitingForPayment"));
-          } else if (status === 'expired') {
-            this.newStatus('Expired', this.$t("expired"));
-          } else {
-            this.newStatus('Success', this.$t("paymentAccepted"));
-            if (response.data.linkback && !this.loading) {
-              this.linkback = response.data.linkback;
-              this.linkbackCounter = 15;
-              setInterval(() => {
-                this.linkbackCounter -= 1;
-                if (this.linkbackCounter <= 0) {
-                  this.linkbackCounter = null;
-                  document.location.href = response.data.linkback;
-                }
-              }, 1000);
-            }
-          }
-          this.data = response.data;
-          this.loading = false;
         })
-        .catch(() => {
-          this.newStatus('Warning', this.$t("notFound"));
-        });
-        if (this.data.status === 'created' || this.data.status === 'partpaid') {
-          return true;
-        }
-      }
-      return false;
-    },
-    countdown(expire) {
-      const interval = setInterval(() => {
-        const countDownDate = new Date(`${expire}+00:00`).getTime();
-        const now = new Date().getTime();
-        const distance = countDownDate - now;
-        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-        this.expire = (days > 0 ? `${days}d `: ' ')
-                    + (hours > 0 ? `${hours}h `: ' ')
-                    + (minutes > 0 ? `${minutes}m `: ' ')
-                    + `${seconds}s`;
-        if (distance < 0) {
-          clearInterval(interval);
-          this.expire = null;
-          if (this.status.title !== 'Success') {
-            this.newStatus('Expired', this.$t("expired"));
+        if (responseStatus === 'paid' || responseStatus === 'overpaid' || responseStatus === 'completed') {
+          setStatus('Success', 'paymentAccepted')
+
+          if (responseData.linkback && !loading.value) {
+            linkback.value = responseData.linkback
+            linkbackCounter.value = 15
+
+            setInterval(() => {
+              linkbackCounter.value -= 1
+              if (linkbackCounter.value <= 0 && !embed.value && !qrOnly.value) {
+                linkbackCounter.value = null
+                document.location.href = responseData.linkback
+              }
+            }, 1000)
           }
         }
-      }, 1000);
-    },
-  },
+        else if (responseStatus === 'expired') {
+          setStatus('Expired', 'expired')
+          expirationConfirmed = true
+        }
+        else if (status.value.title !== 'Expired') {
+          setStatus('Refresh', 'waitingForPayment')
+        }
+        if (responseData.expire) {
+          countdown(responseData.expire)
+        }
+        data.value = responseData
+        const responseUserData = responseData['user-data']
+        if (responseUserData && typeof responseUserData === 'object') {
+          if (!Array.isArray(responseUserData.extras)) {
+            Object.assign(responseUserData, { extras: [] })
+          }
+          if (!Array.isArray(responseUserData.items)) {
+            Object.assign(responseUserData, { items: null })
+          }
+          userData.value = responseUserData
+        }
+        loading.value = false
+      })
+      .catch(() => {
+        const notLoading = !loading.value
+        loading.value = false
+        if (notLoading) {
+          return
+        }
+        isNotFound.value = true
+        setStatus('Warning', 'invoiceNotFound')
+      })
+
+    if (data.value.status === 'created' || data.value.status === 'partpaid') {
+      document.title = `Invoice - ${userData.value.merchant ? userData.value.merchant : ''} ${data.value.invoice}`
+      checkRepeat.value = true
+      return true
+    }
+  }
+  document.title = `Invoice - ${userData.value.merchant ? userData.value.merchant : ''} ${data.value.invoice}`
+  return false
 }
 </script>
 
-<style scoped>
-.link {
-  transition: .3s;
-  color: #5d8ab9;
+<style lang="scss">
+@use "@/assets/scss/keyframes";
+@use "@/assets/scss/loading";
+
+.dark-theme {
+  .invoice {
+    &.loading {
+      opacity: 0.6;
+    }
+
+    &__note {
+      color: var(--light-blue);
+    }
+
+    &__not-found {
+      &-content {
+        & p {
+          color: var(--light-blue);
+          opacity: .7;
+        }
+
+        & i {
+          & svg {
+            path {
+              fill: var(--light-blue);
+              opacity: .7;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+.light-theme {
+  .invoice {
+    &-expired {
+      opacity: .6;
+    }
+
+    &__note {
+      color: var(--grey-9);
+    }
+
+    &__not-found {
+      &-content {
+        & p {
+          opacity: .7;
+        }
+
+        & i {
+          & svg {
+            path {
+              fill: var(--dark-primary);
+              opacity: .7;
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 .invoice {
   width: 95%;
   max-width: 35rem;
-  margin: 2rem 0;
-}
+  padding: 2rem 0;
 
-.invoice-expired {
-  opacity: .6;
-}
+  &.invoice__qr-only {
+    width: auto;
+  }
 
-.invoice h1 {
-  margin: 0;
-}
+  &__body {
+    margin-top: 1rem;
+  }
 
-.invoice h1 small {
-  font-size: 50%;
-  opacity: .6;
-}
+  &__not-found {
+    &-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
 
-.merchant {
-  margin-top: 0;
-}
+      & p {
+        font-size: 32px;
+        font-weight: 700;
+      }
+      & i {
+        & svg {
+          width: 54px;
+          height: 54px;
+        }
+      }
+    }
+  }
 
-.info__date {
-  color: #a5a5a5;
-  margin: 0;
-}
+  &__info {
+    display: flex;
+  }
 
-.info__amount {
-  font-size: 1.3rem;
-  font-weight: 600;
-  margin-bottom: 0;
-}
+  &__qr-only {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
 
-.info__amount small {
-  opacity: .7;
-}
+  &__qr-only .qr__wrapper {
+    margin: 0 auto 1rem;
+  }
 
-.info__price {
-  margin-top: .5rem;
-}
-
-.invoice__body {
-  margin-top: 1rem;
-}
-
-.invoice__info {
-  display: flex;
-}
-
-.info {
-  margin-left: 2rem;
-  flex-grow: 1;
-}
-
-.qr__wrapper {
-  width: 10rem;
-  height: 10rem;
-  border: .0625rem solid #f1f1f1;
-  padding: 1rem;
-  border-radius: 1rem;
-  overflow: hidden;
-  align-self: center;
-}
-
-.qr__wrapper>div {
-  width: 100%;
-  height: 100%;
-}
-
-.address {
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: relative;
-  width: 100%;
-  min-height: 4rem;
-  margin: 1rem 0;
-  padding: 0 1rem;
-  border: 1px solid#f1f1f1;
-  border-radius: 1rem;
-}
-
-.address p {
-  word-wrap: break-word;
-  max-width: 87%;
-}
-
-.address__title {
-  position: absolute;
-  top: -.8rem;
-  left: .7rem;
-  padding: .3rem;
-  font-size: .8rem;
-  background-color: #ffffff;
-  color: #a5a5a5;
-}
-
-.status-data__wrapper {
-  position: relative;
-  min-height: 8rem;
-  width: 100%;
-  z-index: 9;
-}
-
-.status-data {
-  margin: 1rem 0;
-  position: absolute;
-  width: 100%;
-}
-
-.history {
-  height: 0;
-  overflow-y: hidden;
-  padding-top: 1rem;
-  transition: .4s;
-  transform: translateY(-1.75rem);
-}
-
-.status-data.historyFlag .history {
-  height: unset;
-  transform: translateY(-.75rem);
-  border: 1px solid #f1f1f1;
-  border-top: none;
-  border-radius: 0 0 1rem 1rem;
-}
-
-.status-data.historyFlag .history ul {
-  padding: 0 1rem 1rem;
-  margin-bottom: 0;
-  background-color: #ffffff;
-}
-
-.history__item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #ffffff;
-}
-
-.status {
-  display: flex;
-  align-items: center;
-  position: relative;
-  background-color: #f1f1f1;
-  border-radius: 1rem;
-  padding-right: 1rem;
-}
-
-.status__icon {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 4rem;
-  width: 4rem;
-  margin-right: 2rem;
-  border-radius: 1rem;
-  background-color: #f1f1f1;
-}
-
-.status__text {
-  display: flex;
-  justify-content: space-between;
-  flex-grow: 1;
-}
-
-.status__icon span {
-  width: 2rem;
-  height: 2rem;
-}
-
-.status.refresh .status__icon {
-  background-color: #5d8ab9;
-}
-
-.status.success .status__icon {
-  background-color: #30cb83;
-}
-
-.status.expired .status__icon {
-  background-color: #a5a5a5;
-}
-
-.status.warning .status__icon {
-  background-color: #f39c12;
-}
-
-.status__icon {
-  color: #ffffff;
-}
-
-.status.refresh .svg {
-  -webkit-animation: spin 2s linear infinite;
-  -moz-animation: spin 2s linear infinite;
-  animation: spin 2s linear infinite;
-}
-
-.invoice__footer {
-  color: #a5a5a5;
-}
-
-.invoice__footer p {
-  text-align: center;
-}
-
-.invoice__footer .logo {
-  width: 5rem;
-  transform: translateY(2px);
-}
-
-.loading .skeleton__box {
-  position: relative;
-  overflow: hidden;
-  background-color:#f1f1f1;
-  border-radius: 1rem;
-  color: rgba(0, 0, 0, 0);
-}
-
-.loading p.skeleton__box {
-  width: 100%;
-  height: 2rem;
-}
-
-.loading .skeleton__box>span {
-  opacity: 0;
-}
-
-.loading .skeleton__box::after {
-  position: absolute;
-  inset: 0;
-  transform: translateX(-100%);
-  background-image: linear-gradient(
-  90deg,
-  rgba(255, 255, 255, 0) 0,
-  rgba(255, 255, 255, 0.2) 20%,
-  rgba(255, 255, 255, 0.5) 60%,
-  rgba(255, 255, 255, 0)
-  );
-  animation: shimmer 2s infinite;
-  content: '';
-}
-
-table {
-  box-sizing: border-box;
-  text-indent: initial;
-  border-spacing: 2px;
-  border-color: grey;
-  border-collapse: collapse;
-  display: table;
-  overflow-x: auto;
-  width: 100%;
-}
-
-thead {
-  display: table-header-group;
-  vertical-align: middle;
-  border-color: inherit;
-}
-
-tr {
-  display: table-row;
-  vertical-align: inherit;
-  border-color: inherit;
-  border-top: 1px solid rgb(223, 226, 229);
-}
-
-td, th {
-  border-width: 1px;
-  border-style: solid;
-  border-color: rgb(223, 226, 229);
-  border-image: initial;
-  padding: 0.6em 1em;
-  text-align: left;
-}
-
-th {
-  display: table-cell;
-  vertical-align: inherit;
-  font-weight: bold;
-}
-
-.invoice__footer {
-  color: #a5a5a5;
-}
-
-.invoice__footer p {
-  text-align: center;
-}
-
-.countdown {
-  font-weight: bold;
-}
-
-@-moz-keyframes spin { 
-  100% { -moz-transform: rotate(-360deg); } 
-}
-
-@-webkit-keyframes spin { 
-  100% { -webkit-transform: rotate(-360deg); } 
-}
-
-@keyframes spin { 
-  100% { 
-    -webkit-transform: rotate(-360deg); 
-    transform: rotate(-360deg); 
-  } 
-}
-
-@keyframes shimmer {
-  100% {
-    transform: translateX(100%);
+  &__note {
+    margin: 0 auto 2rem;
+    width: 70%;
+    font-weight: 500;
   }
 }
 
 @media screen and (max-width: 540px) {
-  .invoice__info {
-    flex-direction: column;
+  .invoice {
+    &__info {
+      flex-direction: column;
+    }
+
+    &__note {
+      width: 90%;
+    }
   }
-
-  .info {
-    order: -1;
-    margin-left: 0;
-  }
-}
-
-@media screen and (max-width: 400px) {
-  .status__icon {
-    margin-right: 1rem;
-  }
-}
-</style>
-
-<style>
-.qr__wrapper img {
-  width: 100%;
-  height: 100%;
-}
-
-.qr__wrapper canvas {
-  max-width: 100%;
-}
-
-.invoice__footer .logo {
-  width: 5rem;
-  transform: translateY(2px);
-}
-
-.btn__copy {
-  margin-left: 2rem;
-}
-
-.status__icon .svg {
-  width: 100%;
-  height: 100%;
-}
-
-.loading .toggler {
-  display: none !important;
-}
-
-body .status-data .toggler {
-  position: absolute;
-  top: 100%;
-  right: 1rem;
-  margin-top: -1rem;
-  border-radius: 0 0 0.3rem 0.3rem;
-  border-color: #f1f1f1;
-  background-color: #f1f1f1;
-  padding: 0 0.5rem;
-}
-
-body .status-data.historyFlag .toggler {
-  margin-top: -.75rem;
-}
-
-body .status-data .toggler .btn__icon {
-  transform: rotate(180deg);
-}
-
-body .status-data.historyFlag .toggler .btn__icon {
-  transform: rotate(0deg);
 }
 </style>
