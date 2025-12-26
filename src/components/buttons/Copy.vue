@@ -2,15 +2,8 @@
   <button
     class="btn__copy hovered"
     @click="copy()"
-    :disabled="disabled"
   >
     <SvgIcon :name="success ? 'copy_success' : 'copy'" :class="{'icon_copy-success': success}"/>
-    <span
-      v-if="title"
-      class="btn__copy-title"
-    >
-      {{ title }}
-    </span>
   </button>
 </template>
 
@@ -22,22 +15,21 @@ import copyTextToClipboard from '@/utils/clipboard'
 import SvgIcon from '@/components/icons/SvgIcon.vue'
 
 const props = defineProps({
-  title: {
-    default: '',
-  },
   text: {
     default: '',
-  },
-  disabled: {
-    default: false,
   },
 })
 
 const success = ref(false)
 
 function copy() {
-  copyTextToClipboard(props.text).then(result =>
-    success.value = result)
+  if (success.value) {
+    return
+  }
+  copyTextToClipboard(props.text).then(result => {
+    success.value = result
+    setTimeout(() => success.value = false, 1000)
+  })
 }
 </script>
 
@@ -54,15 +46,6 @@ function copy() {
   padding: 0;
   cursor: copy;
   transition: .3s;
-
-  &-title {
-    margin-left: .3rem;
-  }
-
-  &:disabled {
-    cursor: default;
-    opacity: .6;
-  }
 
   i {
     width: 1rem;
