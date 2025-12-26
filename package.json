@@ -1,28 +1,29 @@
 {
   "name": "invoice",
-  "version": "0.3.1",
+  "version": "1.0.1",
   "private": true,
   "scripts": {
-    "serve": "export SET NODE_OPTIONS=--openssl-legacy-provider; vue-cli-service serve",
-    "build": "export SET NODE_OPTIONS=--openssl-legacy-provider; vue-cli-service build",
+    "serve": "vite",
+    "build": "vite build",
+    "build-embed": "vite build --mode embed",
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
-    "@vue/compat": "^3.0.0",
-    "axios": "^0.24.0",
-    "core-js": "^3.6.5",
-    "vue": "^3.0.0",
-    "vue-i18n": "^9.2.0",
-    "vue-qr-generator": "^3.0.1"
+    "@vue/compat": "^3.4.22",
+    "axios": "^1.6.8",
+    "core-js": "^3.36.1",
+    "decimal.js": "^10.5.0",
+    "primeicons": "^7.0.0",
+    "qrcode.vue": "^3.4.1",
+    "vue": "^3.4.22",
+    "vue-i18n": "^9.12.1"
   },
   "devDependencies": {
-    "@vue/cli-plugin-babel": "~4.5.0",
-    "@vue/cli-plugin-eslint": "~4.5.0",
-    "@vue/cli-service": "~4.5.0",
-    "@vue/compiler-sfc": "^3.0.0",
-    "babel-eslint": "^10.1.0",
-    "eslint": "^6.7.2",
-    "eslint-plugin-vue": "^6.2.2"
+    "@vitejs/plugin-vue": "^5.0.4",
+    "@vue/compiler-sfc": "^3.4.23",
+    "sass": "^1.75.0",
+    "sass-loader": "^14.2.1",
+    "vite": "^5.2.9"
   },
   "eslintConfig": {
     "root": true,
